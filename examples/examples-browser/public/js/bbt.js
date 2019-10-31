@@ -56,18 +56,30 @@ async function createBbtFaceMatcher(numImagesForTraining = 1) {
 // 获取文件名以及设置对比模型
 async function createBsmFaceMatcher() {
 	const list = await $.get("/imageList")
-	return Promise.all(list.map(async file => {
-		// fetch image data from urls and convert blob to HTMLImage element
-		const imgUrl = `/bbt/${file}`
-		const img = await faceapi.fetchImage(imgUrl)
+	let fullFaceDescription = []
+	return new Promise(resolve => {
+		const promiseData = Promise.allSettled(list.map(async (file,index) => {
+			// fetch image data from urls and convert blob to HTMLImage element
+			const imgUrl = `/bbt/${file}`
+			const img = await faceapi.fetchImage(imgUrl)
 
-		// detect the face with the highest score in the image and compute it's landmarks and face descriptor
-		const fullFaceDescription = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor()
+			// detect the face with the highest score in the image and compute it's landmarks and face descriptor
+			const fullFaceDescription = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor()
 
-		if (!fullFaceDescription) {
-			throw new Error(`no faces detected for ${file}`)
-		}
-		const faceDescriptors = [fullFaceDescription.descriptor]
-		return new faceapi.LabeledFaceDescriptors(file.split('.')[0], faceDescriptors)
-	}))
+			if (!fullFaceDescription) {
+				console.error(`no faces detected for ${file}`)
+				return
+			}
+			console.log(`处理完${file}`,index)
+			const faceDescriptors = [fullFaceDescription.descriptor]
+			return new faceapi.LabeledFaceDescriptors(file.split('.')[0], faceDescriptors)
+		}))
+		promiseData.then(results => {
+			results.forEach(result => {
+				console.log('result',result)
+				if (result.status === 'fulfilled'&&result.value ) fullFaceDescription.push(result.value)
+			})
+			resolve(fullFaceDescription)
+		})
+	})
 }

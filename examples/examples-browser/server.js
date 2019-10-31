@@ -1,4 +1,3 @@
-
 const express = require('express')
 const path = require('path')
 const {get} = require('request')
@@ -7,7 +6,13 @@ const fs = require('fs') //引用文件系统模块
 // 读取本地文件夹图片
 console.log('开始读取本地图片并确定识别数据!')
 let images = []
-fs.readdir('./public/bbt', (err, files) =>images = files)
+fs.readdir('./public/bbt', (err, files) => {
+	const index = files.findIndex(value => value === '.DS_Store')
+	if(index!==-1){
+		files.splice(index, 1)
+	}
+	images = files
+})
 
 const app = express()
 
